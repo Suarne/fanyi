@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="完全离线的文言文翻译真题练习：79 道高考真题（2016—2026），配参考译文、采分点解析、翻译方法与错题巩固。">
+<meta name="description" content="文言文翻译真题练习：79 道高考真题（2016—2026），配参考译文、采分点解析、AI 批改与云端错题本。">
 <title>文言翻译研习 · 真题精练</title>
 <style>
 :root{
@@ -193,6 +193,25 @@ tr:last-child td{border-bottom:0}
 .footer-inner{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:20px}
 .toast{position:fixed;left:50%;bottom:24px;z-index:40;transform:translateX(-50%);max-width:min(520px,calc(100% - 32px));padding:12px 18px;background:var(--ink);color:var(--paper);border-radius:6px;box-shadow:var(--shadow);font-size:14px}
 .storage-notice{margin-bottom:20px;padding:12px 16px;background:var(--cinnabar-soft);color:var(--cinnabar-dark);border:1px solid var(--cinnabar);border-radius:6px;font-size:13px}
+textarea{font:inherit}
+.translation-input{display:block;width:100%;min-height:150px;resize:vertical;border:1px solid var(--line-dark);border-radius:6px;background:var(--paper);color:var(--ink);padding:12px 14px;line-height:1.8;outline:none}
+.translation-input:focus{border-color:var(--cinnabar);box-shadow:0 0 0 3px var(--cinnabar-soft)}
+.translation-input[aria-invalid="true"]{border-color:var(--cinnabar)}
+.input-meta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px;margin-top:6px}
+.privacy-note{font-size:12px;color:var(--muted);margin:12px 0}
+.ai-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.ai-error{padding:10px 12px;border-left:2px solid var(--cinnabar);background:var(--cinnabar-soft);color:var(--cinnabar-dark);font-size:13px;margin-top:12px}
+.ai-result{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:24px}
+.score-line{display:flex;align-items:baseline;gap:8px;margin:10px 0}.score-value{font:44px/1.2 var(--serif);color:var(--cinnabar)}
+.ai-disclaimer,.cloud-muted{font-size:12px;color:var(--muted)}
+.point-status{display:inline-block;border-radius:12px;padding:1px 8px;font-size:12px;margin-right:8px;background:var(--paper-deep)}
+.point-status.correct{color:var(--pine);background:var(--pine-soft)}.point-status.partial{color:var(--gold)}.point-status.missed{color:var(--cinnabar);background:var(--cinnabar-soft)}
+.cloud-banner{padding:16px 18px;margin-bottom:20px;border:1px solid var(--cinnabar);background:var(--cinnabar-soft);border-radius:8px}
+.code-value{display:inline-block;max-width:100%;overflow-wrap:anywhere;font:700 16px/1.6 monospace;color:var(--cinnabar-dark);user-select:all}
+.cloud-settings{padding:18px;margin-bottom:24px}.cloud-settings h2{font-size:19px;margin-bottom:8px}.cloud-settings form{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.cloud-settings input{flex:1;min-width:180px}
+.wrong-card{padding:20px 22px;border:1px solid var(--line);border-radius:8px;background:var(--paper-raised)}
+.wrong-card h2{font-size:19px;margin-bottom:6px}.wrong-card blockquote{margin:12px 0;padding:10px 14px;border-left:2px solid var(--gold);background:var(--paper);overflow-wrap:anywhere}
+.wrong-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.sync-badge{font-size:12px;color:var(--muted)}
 @media (max-width:1000px){
   .welcome-grid{gap:40px}.quiz-layout.graded{grid-template-columns:1fr}.result-panel{box-shadow:none}.question-row{grid-template-columns:42px minmax(0,1fr) auto 20px}
 }
@@ -222,18 +241,28 @@ tr:last-child td{border-bottom:0}
 </header>
 <main id="app" class="shell"></main>
 <footer class="site-footer">
-  <div class="shell footer-inner"><span>文言翻译研习 · 配套学习资源</span><span>完全离线 · 学习记录仅保存在此浏览器</span></div>
+  <div class="shell footer-inner"><span>文言翻译研习 · 配套学习资源</span><span>本地自评 · 可选 AI 批改与云端错题本</span></div>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script>
+<script type="module">
+import { QUESTIONS } from './data/questions.js';
+import { createLearner, gradeTranslation, getWrongbook, putWrongItem, deleteWrongItem, clearWrongbook } from './api.js';
+
 'use strict';
 
 const STORAGE_KEY = 'wenyan-fanyi-v1';
 const iconOffline = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 12.5a7 7 0 0 1 12.6-4.2M19 11.5a7 7 0 0 1-12.6 4.2"/><path d="m3 3 18 18"/></svg>';
 
-const QUESTIONS = [{"id":"q1","group":"2016年","source":"全国Ⅰ卷①","original":"锡宴不赴，是不虔君命也。人主有疾，而必使亲临，处之安乎？","translation":"赏赐的宴席不去参加，这是不恭敬君主的命令啊。君主有病，却一定要他亲自到场，这样做能心安吗？","points":"锡（通“赐”，赏赐—通假推断）；虔（恭敬—语境推断）；人主（国君—文化常识）。处（对待，处置，安排，引申为这样做—语境）。","methods":"留（君）、换（锡→赐）、补（省略主语“曾公亮”）、套（“是……也”判断句，“乎”反问句）。"},{"id":"q2","group":"2016年","source":"全国Ⅰ卷②","original":"苏轼尝从容责公亮不能救正，世讥其持禄固宠云。","translation":"苏轼曾经不经意地责备曾公亮不能匡救（朝政）使之端正，世人讥讽他（只是）保住俸禄（官位）、稳固恩宠罢了。","points":"从容（随意，不经意—语境推断）；救正（匡救纠正—并列结构）；持禄固宠（固定短语，积累）。","methods":"换（从容→私下）、补（“救正”后补“之”指朝政）、留（人名）。"},{"id":"q3","group":"2016年","source":"全国Ⅱ卷①","original":"其兄安时随至官所，甫不能辞，厚遣之。","translation":"他的哥哥王安时跟随（他）来到任所，王安石不能推辞，（便）用厚礼打发（送走）了他。","points":"官所（任所—偏正结构）；遣（打发—语境推断）；辞（推辞—积累）；厚（丰厚的、优厚的，语法推断此处做状语）。","methods":"补（省略主语“王甫”和宾语“之”）、换（遣→打发）。"},{"id":"q4","group":"2016年","source":"全国Ⅱ卷②","original":"陛下为民父母，岂可重绝其胤，使更相杀也。","translation":"陛下是百姓的父母，怎么可以再次断绝他们的后代，使他们互相残杀呢？","points":"胤（后代—上下文推断）；更相（互相—固定搭配）。","methods":"判断句（为民父母）、换（胤→后代）、套（“岂可……也”反问句）。"},{"id":"q5","group":"2016年","source":"全国Ⅲ卷①","original":"知者顺时而谋，愚者逆理而动，吾窃悲京城太叔以不知足而故去也。","translation":"聪明的人顺应时势来谋划，愚昧的人违背事理来行动，我私下为京城太叔因为不知足而主动离开感到悲哀。","points":"知（通“智”，与“愚”对文—对文推断）；窃（私下—谦辞积累）；悲（悲哀、同情—意动用法语境）；故去（主动离开—语境）。","methods":"换（知→智）、留（京城太叔）、调（“以不知足”作状语前置理解）。"},{"id":"q6","group":"2016年","source":"全国Ⅲ卷②","original":"莽尝下诏，欲以安汉公居摄，群公皆曰可，谭独曰不可。","translation":"王莽曾经下诏，想要让安汉公（自己）占据代理政务的权位，所有公卿都说可以，只有爰谭说不可以。","points":"居摄（摄政，代理政务—文化常识）；尝（曾经—积累）。","methods":"留（王莽、安汉公、爰谭）、换（居摄→摄政）。"},{"id":"q7","group":"2016年","source":"北京卷","original":"楚民即释其耕农而畋鹿。","translation":"楚国的百姓就放弃了他们的农耕（事业）而去猎捕鹿。","points":"释（放弃—语境）；畋（打猎—字形“田”旁+语境）。","methods":"换（畋→打猎）、补（“而”表承接）。"},{"id":"q8","group":"2016年","source":"天津卷①","original":"季思轶满东下，所经复然，竟不得。","translation":"季思任期届满向东而下，（沿途）所经过的地方（情形）还是这样，最终没有找到（或达成）。","points":"轶满（轶：官职、俸禄等级––文化常识，任期届满—固定说法）；竟（最终—语境）。","methods":"补（“不得”后补宾语“之”）、换（轶满→期满）。"},{"id":"q9","group":"2016年","source":"天津卷②","original":"宗质起揖之坐，礼以客主。","translation":"宗质站起身来，向他作揖行礼并请他坐下，按照主客的礼节来款待他。","points":"揖（作揖—文化常识；揖之，向他作揖）；礼以客主（即以客主礼—状语后置，语法推断）。","methods":"补（省略，礼之，款待他）、调（“礼以客主”即“以客主礼”）。"},{"id":"q10","group":"2016年","source":"江苏卷①","original":"汝则已矣，还教子读书，以期不坠先业。","translation":"你就算了吧，（不如）回去教导儿子读书，来期望不使祖先的基业衰落。","points":"已（停止，罢了—积累，语境）；坠（使……丧失，衰落—语境，语法）。","methods":"换（已→罢了，坠→丧失）、补（不如，可使句意连贯）。"},{"id":"q11","group":"2016年","source":"江苏卷②","original":"友人以经书题相商，入耳文立就，后有言及者。","translation":"朋友拿经书中的题目来（与他）商讨，（他）听到（题目）文章立刻写成，后来还有谈到（这件事）的人。","points":"相商（互相商讨—语法）；立就（立刻完成—语境）。","methods":"补（省略主语“他”和“文章”）、换（就→完成）。"},{"id":"q12","group":"2017年","source":"全国Ⅰ卷①","original":"性严正，举止必循礼度，事继亲之党，恭谨过常。","translation":"（谢弘微）性情严肃正直，一举一动必定遵循礼法制度，侍奉继母的亲族，恭敬谨慎超过常人。","points":"循（遵循—语境）；事（侍奉—语法，后接宾语）；党（亲族—语境）；过常（超过平常—偏正）。","methods":"补（省略主语）、换（党→亲族）。"},{"id":"q13","group":"2017年","source":"全国Ⅰ卷②","original":"而曜好臧否人物，每言论，常为当时所薄。","translation":"而谢曜喜欢品评人物，每次发表言论，常常被当时的人鄙薄。","points":"臧否（品评，臧为褒、否为贬—对文推断）；薄（鄙薄—语境）；为……所……（被动固定结构，语法）","methods":"换（臧否→品评）、套（“为……所”被动句）。"},{"id":"q14","group":"2017年","source":"全国Ⅱ卷①","original":"弘正厚抚之，故虽驱之寇，皆无叛志。","translation":"弘正优厚地安抚他们，所以虽然驱使（他们）去攻打敌寇，（他们）都没有背叛的心思。","points":"抚（安抚—语境）；驱（驱使—语境）。","methods":"补（省略宾语“他们”）、换（抚→安抚）。"},{"id":"q15","group":"2017年","source":"全国Ⅱ卷②","original":"上曰：“然。此固朕心。”乃赐之。","translation":"皇上说：“对。这确实是我的心意。”于是赐给了他（或赏赐他）。","points":"然（对，是的—语境）；固（确实—语境）。","methods":"留（上）、换（然→对，固→确实）。"},{"id":"q16","group":"2017年","source":"全国Ⅲ卷①","original":"将吏挟私，莫肯尽言，卿其毋惮。","translation":"将领和官吏怀有私心，没有人肯把话说尽，你一定不要害怕。","points":"挟（怀有—语境）；莫（没有人—语法，作主语）；其（语气副词表祈使—语气推断）；惮（害怕—语境）。","methods":"换（挟→怀有）、套（“其”表祈使）。"},{"id":"q17","group":"2017年","source":"全国Ⅲ卷②","original":"及车驾还京师，怀光忧恐，乃谋叛。","translation":"等到皇帝返回京师，怀光忧虑恐惧，于是谋划叛乱。","points":"车驾（代指皇帝—借代，文化常识）。","methods":"留（怀光）、换（车驾→皇帝）。"},{"id":"q18","group":"2017年","source":"江苏卷①","original":"予之先容甫，以爵也；若以学，则予于容甫当北面矣。","translation":"我之所以位居容甫之前，是凭借爵位；如果凭借学问，那么我对于容甫应当面朝北（拜他为师）了。","points":"先（位居……前—语法推断，形容词作动词）；北面（面朝北，称臣、归顺，此处是拜师、行弟子礼—文化常识）。","methods":"留（容甫）、换（北面→拜师）。"},{"id":"q19","group":"2017年","source":"江苏卷②","original":"其于知友故旧殁后衰落，相存问过于生前。","translation":"他对于知心朋友和老朋友去世后（家境）衰落（的情况），（前去）慰问探望（他们）超过了（他们）在世的时候。","points":"存问（慰问—古义积累）；过（超过—表比较）；相（动作偏指一方，他们—语法）。","methods":"补（省略“他们”）、换（存问→慰问）。"},{"id":"q20","group":"2018年","source":"全国Ⅰ卷①","original":"诸葛诞以寿春叛，魏帝出征，芝率荆州文武以为先驱。","translation":"诸葛诞在寿春反叛，魏帝亲自出征，鲁芝率领荆州的文武官员作为先锋。","points":"以（在—介词）；先驱（先锋—语境）。","methods":"留（人名、地名）、换（先驱→先锋）、补（“以为”即“以（之）为”）。"},{"id":"q21","group":"2018年","source":"全国Ⅰ卷②","original":"帝以芝清忠履正，素无居宅，使军兵为作屋五十间。","translation":"皇帝因为鲁芝清廉忠诚、践行正道，向来没有住宅，派士兵给他建造了五十间房屋。","points":"履（践行—名词作动词，语法）；素（向来—时间副词积累）。","methods":"留（芝）、换（履→践行）、调（“屋五十间”定语后置）、补（为（之）作，他、鲁芝清）。"},{"id":"q22","group":"2018年","source":"全国Ⅱ卷①","original":"民思其德，为立祠安阳亭西，每食辄弦歌而荐之。","translation":"百姓思念他的恩德，替（他）在安阳亭西面建立了祠堂，每次吃饭就奏乐唱歌来祭祀他。","points":"辄（就—副词）；荐（祭祀—古义）。","methods":"补（省略宾语“王涣”）、调（“安阳亭西”方位补语）、换（荐→祭祀）。"},{"id":"q23","group":"2018年","source":"全国Ⅱ卷②","original":"一岁断狱，不过数十，威风猛于涣，而文理不及之。","translation":"一年审理的案件，不过几十件，威严勇猛（比）王涣厉害，但文书法理（却）赶不上他。","points":"断狱（审理案件，“狱”即案件—古义积累）；于（比—介词表比较）；文理（文书法理—对举“威风”）。","methods":"换（狱→案件）、调（“于涣”状语后置）、补（“不及之”补“王涣”）。"},{"id":"q24","group":"2018年","source":"全国Ⅲ卷①","original":"方务招怀，未即加兵，乃先遣使谕之。","translation":"（朝廷）正致力于招抚怀柔，没有立即出兵，于是先派遣使者晓谕他们。","points":"务（致力于—语境）；加兵（出兵—动宾结构）；谕（晓谕—语境）。","methods":"补（省略主语“朝廷”）、换（加兵→出兵，谕→告知）。"},{"id":"q25","group":"2018年","source":"全国Ⅲ卷②","original":"故事，监司奏劾，必先白台省。","translation":"按照旧例，监司上奏弹劾（人），一定先禀告台省。","points":"故事（旧例—古今异义，语境）；白（禀告—语境）。","methods":"换（故事→旧例，白→禀告）、留（台省）。"},{"id":"q26","group":"2018年","source":"北京卷①","original":"德輶如毛，民鲜克举之。","translation":"德行轻得像羽毛，但百姓很少能举起（担负）它的。","points":"輶（古代一种轻便的车子，借指轻微、轻巧—比喻语境，生僻词汇积累）；鲜（少—语境）；克（能够—积累）。","methods":"换（輶→轻，鲜→少，克→能）、套（比喻句式“如”）。"},{"id":"q27","group":"2018年","source":"北京卷②","original":"不取其金，则不复赎人矣。","translation":"（如果）不领取那赎金，就不会再有人赎人了。","points":"金（赎金，非黄金—语境）；复（再—时间副词）。","methods":"补（省略“如果”和“有人”）、换（金→赎金）。"},{"id":"q28","group":"2019年","source":"全国Ⅰ卷①","original":"乃短贾生曰：“洛阳之人，年少初学，专欲擅权，纷乱诸事。”","translation":"（绛侯、灌婴等）于是诋毁贾谊说：“洛阳那个年轻人，年纪轻轻刚学东西，（却）一心想专权，使各种事情混乱。”","points":"短（诋毁—形容词活用为动词，语境、积累）；擅权（专权—固定）；纷乱（使……混乱—使动用法，语法）。","methods":"补（省略主语）、换（短→诋毁）、留（贾生）。"},{"id":"q29","group":"2019年","source":"全国Ⅰ卷②","original":"贾生数上疏，言诸侯或连数郡，非古之制，可稍削之。","translation":"贾谊多次上奏疏，说诸侯王有的占据几个郡，不符合古代的制度，可以逐渐削减他们的封地。","points":"数（多次，读shuò—语境）；或（有的—代词）；稍（逐渐—古义，非“稍微”）。","methods":"留（贾生）、换（数→多次，稍→逐渐）、补（“削之”补“他们的封地”）。"},{"id":"q30","group":"2019年","source":"全国Ⅱ卷①","original":"孝公既用卫鞅，鞅欲变法，恐天下议己。","translation":"秦孝公已经任用了卫鞅，卫鞅想要变法，担心天下人非议自己。","points":"既（已经/之后—时间副词）；议（非议—语境）。","methods":"留（人名）、换（恐→担心）。"},{"id":"q31","group":"2019年","source":"全国Ⅱ卷②","original":"圣人苟可以强国，不法其故；苟可以利民，不循其礼。","translation":"圣人如果（认为）能够使国家强盛，就不效法旧的成例；如果能够使百姓获利，就不遵循旧的礼制。","points":"苟（如果—假设条件连词）；法（效法—名词作动词）；利（使……获利—使动用法，语法）。","methods":"换（法→效法，利→使……获利）、套（“苟”条件句）。"},{"id":"q32","group":"2019年","source":"全国Ⅲ卷①","original":"鲁人皆以儒教，而朱家用侠闻。","translation":"鲁地的人都用儒家学说（来教导），而朱家凭借侠义（之举）闻名。","points":"以（用—介词）；闻（闻名—语境）；用（介词，凭借、因为—积累）。","methods":"留（鲁、朱家）、换（闻→闻名）。"},{"id":"q33","group":"2019年","source":"全国Ⅲ卷②","original":"所杀甚众，遂灭豪侠之属。","translation":"所杀死的人数很多，于是消灭了豪侠这一类人。","points":"属（类—语境）。","methods":"换（属→一类人）、补（省略主语“官军/朝廷”）。"},{"id":"q34","group":"2019年","source":"江苏卷①","original":"公与予约游具区灵岩虎丘诸山川，而不能办三月粮，逡巡中辍。","translation":"公与我约定游览具区、灵岩、虎丘等众多山川，（但）不能备办三个月的粮食，（于是）徘徊犹豫，中途停止了。","points":"诸（众多—语境）；逡巡（徘徊不前—固定词语）；辍（停止—语境）。","methods":"留（地名）、换（逡巡→徘徊犹豫）、补（省略“我们”）。"},{"id":"q35","group":"2019年","source":"江苏卷②","original":"每曲意事二人，绩不少降节。","translation":"（他）时常违心地侍奉那两个人，但孙绩却没有丝毫降低节操。","points":"曲意（违心—由“曲”引申）；少（丝毫—与“不”连用表强调）；降节（降低节操—积累，常识）。","methods":"补（省略主语）、留（绩）、换（少→丝毫）。"},{"id":"q36","group":"2020年","source":"新高考Ⅰ卷①","original":"涟等初不承，已而恐以不承为酷刑所毙，冀下法司，得少缓死为后图。","translation":"杨涟等人起初不招认，不久担心因为不招认被酷刑拷打致死，希望（被）交给法司（审理），能够稍微延缓死期来作日后的打算。","points":"承（招认—法律语境）；冀（希望—积累）；少（稍微—副词）下（交付、移交—积累、语境）。","methods":"留（涟）、换（承→招认，冀→希望）、套（“为……所”被动句）、补（“下法司”前补“被”）。"},{"id":"q37","group":"2020年","source":"新高考Ⅰ卷②","original":"光斗既死，赃犹未竟。忠贤令抚按严追。","translation":"左光斗已经死了，赃物还没有追完。魏忠贤命令抚按官员严厉追索。","points":"竟（完毕—语境）；追（追索—语境）。","methods":"留（左光斗、魏忠贤）、换（竟→完结，追→追缴）。"},{"id":"q38","group":"2020年","source":"新高考Ⅱ卷①","original":"光武所幸之处，辄先入清宫，甚见亲信。","translation":"光武帝所到之处，（他）总是先进入（为皇帝）清理宫室，很被（光武帝）亲近信任。","points":"幸（皇帝驾临—文化常识）；辄（总是—副词）；见（被—表被动，语法）。","methods":"留（光武）、换（幸→驾临）、套（“见”表被动）、补（省略主语“他”）。"},{"id":"q39","group":"2020年","source":"新高考Ⅱ卷②","original":"帝数宴见，论辩得失，光武多纳用焉。","translation":"皇帝多次在宴会上召见（他），议论辩论（政事的）得失，光武帝大多采纳（他的意见）。","points":"数（多次—语境）；宴见（宴会中召见—文化常识）；纳用（采纳—同义复合）。","methods":"留（光武）、换（数→多次，纳用→采纳）、补（省略宾语“他的意见”）。"},{"id":"q40","group":"2020年","source":"天津卷①","original":"家人有少变其旧者，辄不怿。","translation":"家人有稍微改变旧规矩的，（他）就不高兴。","points":"少（稍微—副词）；辄（就—副词）；怿（高兴—从“忄”形声推断）。","methods":"补（省略主语“他”）、换（少→稍微，怿→高兴）。"},{"id":"q41","group":"2020年","source":"天津卷②","original":"况其祸有不可胜言者矣，此岂善治生欤？","translation":"何况那祸害有说不完的呢，这难道是善于治理生计吗？","points":"胜（尽—成语“不胜枚举”联想）；治生（经营生计—动宾结构）。","methods":"换（胜→尽，治生→经营生计）、套（“岂……欤”反问句）。"},{"id":"q42","group":"2021年","source":"新高考Ⅰ卷①","original":"上患吏多受赇，密使左右试赂之。","translation":"皇上担心官吏大多接受贿赂，暗中派身边近臣去试探着贿赂他们。","points":"患（担心—语境）；受赇（接受贿赂—“赇”从“贝”，与钱财有关，字形推断）；试（试探—语境）。","methods":"换（患→担心，赇→贿赂，试→试探）、补（省略主语“皇上”）。"},{"id":"q43","group":"2021年","source":"新高考Ⅰ卷②","original":"君恶闻其过则忠化为佞，君乐闻直言则佞化为忠。","translation":"君主厌恶听到自己的过失，那么忠诚（的人）就转化为谄媚（的人）；君主喜欢听取直言，那么谄媚（的人）就转化为忠诚（的人）。","points":"恶（厌恶—与“乐”对文，对文推断）；过（过失—语境）；佞（谄媚之人—与“忠”对文）。","methods":"换（恶→厌恶，过→过失，佞→谄媚）、套（“则”条件句）。"},{"id":"q44","group":"2021年","source":"新高考Ⅱ卷①","original":"会友疾，亲为调药。友卒，哭之恸。","translation":"适逢朋友生病，（他）亲自替（朋友）煎药。朋友去世，（他）哭得很悲痛。","points":"会（适逢—语境）；卒（去世—语境）；恸（极度悲痛—从“心”形声推断）。","methods":"补（省略主语“他”和“之”）、换（会→适逢，卒→去世，恸→极度悲痛）。"},{"id":"q45","group":"2021年","source":"新高考Ⅱ卷②","original":"患人之不己知，求为可知也。","translation":"忧虑别人不了解自己，（就应当）寻求（可以）被了解的（德行/才能）。","points":"患（忧虑—语境）；不己知（即“不知己”—否定句宾语前置，语法推断）。","methods":"调（“不己知”宾语前置）、补（省略“的德行”）、换（患→忧虑）。"},{"id":"q46","group":"2021年","source":"天津卷①","original":"犯此二败以攻孙权，是以丧师于赤壁，以成吴之强。","translation":"犯了这两种失败（的过错）来攻打孙权，因此在赤壁损失了军队，来成就了吴国的强大。","points":"是以（因此—固定结构）；丧师（损失军队—“丧”即损失）。","methods":"留（孙权、赤壁、吴）、换（是以→因此，丧师→损失军队）、调（“于赤壁”状语后置）。"},{"id":"q47","group":"2021年","source":"天津卷②","original":"此不亦长于料事而不长于料人之过欤？","translation":"这不也是擅长预料事情却不擅长预料人的过错吗？","points":"长（擅长—语境）；料（预料—语境）。","methods":"换（长→擅长，料→预料）、套（“不亦……欤”反问句）、补（“此”指代上文）。"},{"id":"q48","group":"2022年","source":"新高考Ⅰ卷①","original":"吾岁不熟二年矣，今又行数千里而以助魏，且奈何？","translation":"我们这里年成不好已经两年了，如今又要行军几千里去援助魏国，将怎么办呢？","points":"岁（年成—古义积累）；不熟（歉收—语境）；行（行军—语境，主语为国家）。","methods":"换（岁→年成，不熟→歉收）、补（省略主语“我们”）、套（“且奈何”疑问句）。"},{"id":"q49","group":"2022年","source":"新高考Ⅰ卷②","original":"燕不救魏，魏王折节割地，以国之半与秦，秦必去矣。","translation":"燕国不援救魏国，魏王就会屈节割让土地，把国家的一半给秦国，秦军一定会撤走了。","points":"折节（屈节—由“折”引申）；与（给—语境）；去（撤军—语境，非“离开”）。","methods":"换（折节→屈节，与→给，去→撤军）、补（省略主语）。"},{"id":"q50","group":"2022年","source":"新高考Ⅱ卷①","original":"禹曰：“吴汉可。禹数与语，其人勇鸷有智谋，诸将鲜能及者。”","translation":"邓禹说：“吴汉可以（担此任）。我多次和他交谈，这个人勇猛强悍有智谋，诸位将领中少有能赶得上（他）的。”","points":"可（可以—语境）；数（多次—读shuò）；勇鸷（勇猛强悍—“鸷”为猛禽，偏正）；鲜（少—语境）。","methods":"留（禹、吴汉）、换（可→合适，勇鸷→勇猛强悍，鲜→少）、补（“及”后补“之”）。"},{"id":"q51","group":"2022年","source":"新高考Ⅱ卷","original":"吴汉尝出征，妻子在后买田业。汉还，让之曰：“军师在外，吏士不足，何多买田宅乎！”","translation":"吴汉曾经出征，妻子儿女在后方购买了田产。吴汉回来，责备她们说：“军队在外，将士（物资）不足，为什么买这么多田宅呢！”","points":"妻子（妻子儿女—古今异义）；让（责备—语境）。","methods":"留（吴汉）、换（妻子→妻子儿女，让→责备）、套（“何……乎”反问句）、补（吏士的物资不足—语境）。"},{"id":"q52","group":"2022年","source":"浙江卷①","original":"则将以我为忍人，而爱夫爵禄也。","translation":"那么（他们）将会认为我是残忍寡情（刻薄）的人，并且是吝惜那爵位俸禄啊。","points":"忍人（刻薄的人—由“忍”即残忍）；爱（吝惜—古义积累）。","methods":"套（“以……为”固定句式）、换（忍人→刻薄的人，爱→吝惜）、补（省略主语“他们”）。"},{"id":"q53","group":"2022年","source":"浙江卷②","original":"使天下而皆知其可刑与不可赏也，则吾犹可以自解。","translation":"假使天下人都知道（某人）该惩罚和不该奖赏，那么我或许还可以自我辩解。","points":"使（假使—连词表假设，语法）；刑（惩罚—语境）；自解（自我辩解—由“解”引申）。","methods":"换（使→假使，刑→惩罚，自解→自我辩解）、套（“使”表假设）。"},{"id":"q54","group":"2023年","source":"新高考Ⅰ卷①","original":"吾群臣无有不骄侮之意者，唯赫子不失君臣之礼，是以先之。","translation":"我的群臣没有不带有骄傲轻慢的神情的，只有赫子不失去君臣的礼节，因此（我）把他放在前面（奖赏他）。","points":"骄侮（骄傲轻慢—同义并列）；是以（因此—固定结构）；先（把……放在前面—名词意动，语法）。","methods":"换（骄侮→骄傲轻慢，先→把……放在前面）、套（“是以”固定句式）、补（“先之”补“奖赏他”）。"},{"id":"q55","group":"2023年","source":"新高考Ⅰ卷②","original":"请略说一隅，而君子审其信否焉。","translation":"请允许我简略地说一个方面，而君子（请您）审察它是否真实可信。","points":"一隅（一个方面—比喻引申）；审（审察—语境）；信（真实—语境）。","methods":"留君子）、换（一隅→一个方面，审→审察，信→真实）、套（“其……否”表选择）。"},{"id":"q56","group":"2023年","source":"新高考Ⅱ卷①","original":"请君少却，令将士得周旋，仆与诸君缓辔而观之，不亦乐乎！","translation":"请你们稍微后退，让将士们能够（与敌军）交战，我与各位放松缰绳骑马观看，不也是很快乐的事吗！","points":"少却（稍微后退—“却”即退，语境）；周旋（交战—本义回旋，此处引申）；仆（我—谦辞，文化常识）。","methods":"换（却→后退，周旋→交战，仆→我）、套（“不亦……乎”反问句）。"},{"id":"q57","group":"2023年","source":"新高考Ⅱ卷②","original":"汝等亦当务功业，何为但如此！","translation":"你们也应该致力于功业，为什么只是这样（无所作为）呢！","points":"务（致力于—语境）；何为（为什么—疑问代词）；但（只—语境）。","methods":"换（务→致力于，但→只）、套（“何为”疑问句）、补（“如此”补“无所作为”）。"},{"id":"q58","group":"2023年","source":"天津卷①","original":"光武难其守。","translation":"光武帝认为那里的防守很困难（或认为那人难以守卫）。","points":"难（认为……困难—意动用法，语法推断）。","methods":"留（光武）、换（难→认为……困难）、套（意动用法“难其守”）。"},{"id":"q59","group":"2023年","source":"天津卷②","original":"今欲降之而反戮其使，无乃不可乎？","translation":"现在想要使他们投降却反而杀戮他们的使者，恐怕不可以吧？","points":"降（使……投降—使动用法，语法）；戮（杀戮—语境）；无乃……乎（恐怕……吧—固定句式）。","methods":"换（降→使……投降，戮→杀）、套（“无乃……乎”固定句式）、补（省略主语“我们”）。"},{"id":"q60","group":"2024年","source":"新高考Ⅰ卷①","original":"愿得自当一队，到兰干山南以分单于兵，毋令专乡贰师军。","translation":"希望（我）能够亲自统领一队人马，到兰干山南面去分散单于的兵力，不要让他集中兵力指向贰师将军的军队。","points":"当（统领—语境）；毋（不要—否定副词）；乡（通“向”，指向—通假推断）。","methods":"留（兰干山、单于、贰师）、换（当→统领，毋→不要）、调（“专乡”即“集中指向”）。"},{"id":"q61","group":"2024年","source":"新高考Ⅰ卷②","original":"汉兵不顾，遂陷其城，尽屠之。","translation":"汉军（没有）顾念（其他），于是攻陷了那座城，把城中之人全部屠杀了。","points":"顾（顾及—语境）；陷（攻陷—语境）；屠（屠杀—语境）。","methods":"补（“不顾”后补“其他”）、换（陷→攻陷，屠→屠杀）。"},{"id":"q62","group":"2024年","source":"新高考Ⅱ卷①","original":"卿宜广求俊彦，以辅朕之不逮。","translation":"你应该广泛寻求才德杰出的人，来辅佐我的不足（之处）。","points":"宜（应该—语境）；俊彦（才德出众之人—同义复合）；不逮（不足—由“逮”及也，语境）。","methods":"换（宜→应该，俊彦→才德出众的人，不逮→不足）、留（朕，我）。"},{"id":"q63","group":"2024年","source":"新高考Ⅱ卷②","original":"法贵必行，不宜以贵贱异制。","translation":"法律崇尚必须施行，不应该因为身份贵贱而对某人区别对待。","points":"贵（崇尚—形容词作动词，语法）；宜（应该—语境）；异制（区别对待—动宾结构）。","methods":"换（贵→崇尚，宜→应该，异制→区别对待）、补（省略“对某人”）。"},{"id":"q64","group":"2024年","source":"天津卷①","original":"若李台州，其事与寿昌岂异也，兹不谓之至孝通于神明乎？","translation":"像李台州，他的事迹与（朱）寿昌难道有什么不同吗，这能不说它是至孝（而）感动了神明吗？","points":"若（像—语境）；异（不同—语境）；兹（这—指示代词）；通（感动—由“通达”引申）。","methods":"留（李台州、寿昌）、换（兹→这）、套（“岂……也”“不谓之……乎”双重反问）。"},{"id":"q65","group":"2024年","source":"天津卷②","original":"有母谁无是心哉？","translation":"有母亲的人，谁没有这种心意呢？","points":"是（这—指示代词）。","methods":"换（是→这）、套（“谁无……哉”反问句）、补（“有母”后补“的人”）。"},{"id":"q66","group":"2025年","source":"新高考Ⅰ卷①","original":"今鲁君老悖，太子少愚，愚伪日起。","translation":"如今鲁国国君年老昏乱，太子年幼愚昧，愚昧虚伪（的风气）一天天地兴起。","points":"老悖（年老昏乱—由“悖”即昏乱）；少（年幼—语境）；日（一天天地—名词作状语，语法）。","methods":"留（鲁君、太子）、换（悖→昏乱，少→年幼，日→一天天地）、补（“起”后补“的风气”）。"},{"id":"q67","group":"2025年","source":"新高考Ⅰ卷②","original":"鲁监门之女婴相从绩，中夜而泣涕，其偶曰：“何谓而泣也？”","translation":"鲁国守门人的女儿婴跟随着（同伴）一起纺绩，半夜里哭泣起来，她的同伴说：“（你）为什么哭泣呢？”","points":"监门（守门人—动宾结构，看守城门）；绩（纺绩—从“纟”与纺织有关，字形推断）；偶（同伴—语境）。","methods":"留（鲁、婴）、换（监门→守门人，绩→纺绩，偶→同伴）、补（“何谓”后补“你”）。"},{"id":"q68","group":"2025年","source":"新高考Ⅱ卷①","original":"温恒云“京口酒可饮，兵可用”，深不欲愔居之。","translation":"温（峤）常说“京口的酒可以喝，军队可以使用”，非常不愿让愔（郗愔）驻守在那里。","points":"恒（常常—时间副词）；云（说—常用义）；居（驻守—语境）。","methods":"留（京口、温、愔）、换（恒→常常，云→说，居→驻守）、补（“居之”补“那里”）。"},{"id":"q69","group":"2025年","source":"新高考Ⅱ卷②","original":"公若大损眠食，可呈此箱，不尔便烧之。","translation":"您如果（身体）大大损伤了睡眠饮食，可以打开这个箱子（看），不这样的话（否则）就烧掉它。","points":"损（损伤—语境）；呈（打开看—由“呈上”引申）；不尔（否则—固定短语，由“不+尔（这样）”语法推断）。","methods":"换（损→损伤，呈→打开看，不尔→否则）、补（“大损”后补“身体”）、套（“若……不尔……”条件句）。"},{"id":"q70","group":"2026年","source":"新高考Ⅰ卷①","original":"渔为得也，今子得而舍之，何也？","translation":"捕鱼本是为了有所收获，如今您捕到了却放走它，这是为什么呢？","points":"为（是—判断句标志，语法）；得（收获，捕获—语境）；舍（舍弃，放走—语境，积累）；何：为什么。","methods":"换（单字变双音节：渔→捕鱼，舍→放走）；补（补出判断词“是”）；保留疑问句式。"},{"id":"q71","group":"2026年","source":"新高考Ⅰ卷②","original":"燕常侵魏八城，臣请北击之，以复侵地。","translation":"燕国曾经侵占魏国八座城池，我请求率军北上攻打燕国，来收复被侵占的土地。","points":"常（曾经—积累）；北（名词作状语，向北—语法）；击（攻打—语境）；以（连词，来—语法）","methods":"留（燕、魏，国名保留）；换（复→收复）；补（补出省略的谓语“率军”）。"},{"id":"q72","group":"2026年","source":"新高考Ⅱ卷①","original":"殷周之盛，《诗》《书》所述，要在安民，富而教之。","translation":"殷周的兴盛，是《诗经》《尚书》所记述的，关键在于安定百姓，使百姓富足之后再教化他们。","points":"要（关键—语境）；安使动，使……安定；富：使动，使……富足（推断：“安”“富”后面接宾语“民”，形容词+宾语，判定使动用法。）；教：（教化—语境）。","methods":"留（《诗》《书》典籍名）；换；调（理顺使动句式）。"},{"id":"q73","group":"2026年","source":"新高考Ⅱ卷②","original":"庐江不知牛耕，每致困乏，王景乃令铸作田器，教之垦辟，百姓充给。","translation":"庐江地区百姓不懂得牛耕，常常造成穷困匮乏，王景于是下令铸造制作农具，教导百姓开垦土地，百姓衣食丰足供给充裕。","points":"每（常常—积累）；致（造成—语境推断）；铸作，铸造制作；田器，农具；垦辟，开垦；充给：（丰足充裕，二字并列，均表富足）。","methods":"留（庐江、王景，地名人名）；补（补出省略主语“百姓”）；换（田器→农具，垦辟→开垦土地）。"},{"id":"q74","group":"2026年","source":"北京卷（模拟）","original":"爵禄非私也，赏有功，罚有罪，君不得而专焉。","translation":"官爵俸禄不是君主的私物，奖赏有功之人，惩罚有罪之人，君主不能够独断专行。","points":"私（私物，私人所有，“私”处在判断句宾语位置，由形容词“私人的”转为名词“私物”—语法）；功，有功的人；罪，有罪的人；专：（独断专行—课内迁移，积累）。","methods":"换（私→私物；专→独断专行）；调（理顺判断句）；补出省略的“君主”。"},{"id":"q75","group":"2026年","source":"北京卷②","original":"苟徇己喜怒，则公道荡矣，虽有爵禄，何以为劝？","translation":"如果顺从自己的喜怒（好恶），那么公正的准则就荡然无存，即使拥有官爵俸禄，又拿什么来勉励世人？","points":"苟，如果；徇，顺从；荡（毁坏、丧失，君主凭个人喜怒赏罚，“荡”不是“飘荡”，推为“毁坏丧失”—语境推断）；虽，即使；何以，凭什么、拿什么（宾语前置）；劝，（勉励，《劝学》“劝学”，勉励，不是“劝说”—课内迁移）；何以，宾语前置。","methods":"调（宾语前置“何以”调整为“以何”）；换；贯（理顺反问语气）。"},{"id":"q76","group":"2026年","source":"天津卷①","original":"吏虽畏威，而心弗服，非所以绥众也。","translation":"官吏虽然畏惧威势，但是内心并不信服，这不是用来安抚众人的办法。","points":"虽，虽然；威，威势；弗：不；所以（用来……的办法，固定句式，表凭借—迁移，积累）；绥，（安抚，《汉书》绥靖—课内迁移）。","methods":"换（绥→安抚；弗→不）；补（补出主语“这”）。"},{"id":"q77","group":"2026年","source":"天津卷②","original":"居官务持大体，不事苛细，人以此多之。","translation":"做官致力于把握大局，不做苛刻细碎的事，人们因此称赞他。","points":"居官（做官—积累）；务（致力于—迁移）；大体（大局—引申）；事（做—词类活用）；苛细，苛刻细碎（的事）；多（称赞—一词多义，积累）。","methods":"换；补（补出省略宾语）；贯。"},{"id":"q78","group":"2026年","source":"上海卷①","original":"世之好文者，徒慕其辞，而不察其本，是以文日工而道日疏。","translation":"世上喜爱文章的人，只羡慕它的文辞，却不体察它的根本，因此文辞一天天精巧，而道义一天天疏远。","points":"徒（只—积累）；慕（仰慕、羡慕—语境）；察，体察；本，根本；是以（因此—固定句式）；语境推断：作文重文辞轻思想，“工”形容文章，译为精巧；“疏”道义日渐荒疏疏远。","methods":"换（徒，慕，察）；套（是以）。"},{"id":"q79","group":"2026年","source":"上海卷②","original":"苟得于心，虽辞之朴，亦可传，奚必繁缛为哉？","translation":"如果内心有所体悟，即使文辞质朴，也可以流传，哪里一定要繁丽堆砌呢？","points":"苟，如果；得于心，内心有所体悟；朴，质朴；虽，即使；传，流传；奚。哪里；繁缛，繁复华丽；为，句末语气词。语法推断：“奚必……为”固定反问句式；奚，疑问副词，哪里；对称推断：朴与繁缛反义对照，推知词义。","methods":"套（奚必……为，苟）；换（朴，传，繁缛）；删（“为”句末语气助词，可不译）。"}];
 
-const defaultData = () => ({version:1,name:'',questions:{}});
+const defaultData = () => ({
+  version:1,name:'',questions:{},learningCode:'',cloudStatus:'local',cloudInitialSyncDone:false,aiResults:{}
+});
+const validLearningCode = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,64}$/.test(value);
+function validAiResult(result){
+  return result && typeof result.score === 'number' && result.score >= 0 && result.score <= 10 &&
+    typeof result.summary === 'string' && Array.isArray(result.points) && Array.isArray(result.errors) &&
+    Array.isArray(result.suggestions) && typeof result.standardAnswer === 'string';
+}
 let storageWarning = '';
 let data = defaultData();
 try {
@@ -241,15 +270,23 @@ try {
   if (raw) {
     const parsed = JSON.parse(raw);
     if (!parsed || parsed.version !== 1 || typeof parsed.name !== 'string' || !parsed.questions || typeof parsed.questions !== 'object' || Array.isArray(parsed.questions)) throw new Error('invalid');
-    data = {version:1,name:parsed.name.slice(0,30),questions:{}};
+    data = {...defaultData(),name:parsed.name.slice(0,30)};
+    data.learningCode = validLearningCode(parsed.learningCode) ? parsed.learningCode : '';
+    data.cloudStatus = ['local','synced','offline'].includes(parsed.cloudStatus) ? parsed.cloudStatus : 'local';
+    data.cloudInitialSyncDone = !!parsed.cloudInitialSyncDone;
     for (const q of QUESTIONS) {
       const r = parsed.questions[q.id];
-      if (!r || typeof r !== 'object') continue;
-      data.questions[q.id] = {
-        attempts:Number.isInteger(r.attempts) && r.attempts >= 0 ? r.attempts : 0,
-        correctAttempts:Number.isInteger(r.correctAttempts) && r.correctAttempts >= 0 ? r.correctAttempts : 0,
-        needsReview:!!r.needsReview,mastered:!!r.mastered
-      };
+      if (r && typeof r === 'object') {
+        data.questions[q.id] = {
+          attempts:Number.isInteger(r.attempts) && r.attempts >= 0 ? r.attempts : 0,
+          correctAttempts:Number.isInteger(r.correctAttempts) && r.correctAttempts >= 0 ? r.correctAttempts : 0,
+          needsReview:!!r.needsReview,mastered:!!r.mastered
+        };
+      }
+      const saved = parsed.aiResults?.[q.id];
+      if (saved && typeof saved.translation === 'string' && validAiResult(saved.result)) {
+        data.aiResults[q.id] = {translation:saved.translation,result:saved.result};
+      }
     }
   }
 } catch (error) {
@@ -265,6 +302,15 @@ let view = 'welcome';
 let currentId = null;
 let revealed = false;
 let marked = null;
+let grading = false;
+let gradingError = '';
+let newCode = false;
+let cloudLoading = false;
+let cloudItems = [];
+let cloudVersion = null;
+let wrongbookError = '';
+let learningCodePromise = null;
+const drafts = {};
 let toastTimer;
 const app = document.getElementById('app');
 const preferredScrollBehavior = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
@@ -276,7 +322,7 @@ function saveData(){
 }
 function showToast(message){
   const toast=document.getElementById('toast');toast.textContent=message;toast.hidden=false;
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.hidden=true;},2400);
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.hidden=true;},3200);
 }
 function recordFor(id){return data.questions[id]||{attempts:0,correctAttempts:0,needsReview:false,mastered:false};}
 function stats(){
@@ -289,6 +335,10 @@ function splitPoints(text){
   return text.split('；').map(s=>s.trim()).filter(s=>s&&s!=='。').map(s=>s.replace(/。$/,''));
 }
 function noticeHtml(){return storageWarning?`<div class="storage-notice" role="status">${esc(storageWarning)}</div>`:'';}
+function codeBannerHtml(){
+  if(!newCode||!data.learningCode)return '';
+  return `<section class="cloud-banner" role="status"><strong>请保存你的专属学习码</strong><p><code class="code-value">${esc(data.learningCode)}</code></p><button class="secondary-button" type="button" data-action="copy-code">复制学习码</button><p class="cloud-muted">它已保存在当前浏览器。其他设备可用它找回错题本；不要公开分享。</p></section>`;
+}
 function renderChrome(){
   const nav=document.getElementById('header-nav');nav.hidden=!data.name;
   document.getElementById('user-button').textContent=data.name?`${data.name} · 修改姓名`:'';
@@ -305,21 +355,21 @@ function renderWelcome(){
       <blockquote class="classic-quote">译事三难：信、达、雅。<small>—— 严复《天演论·译例言》</small></blockquote>
     </div>
     <section class="paper-panel login-panel" aria-labelledby="login-title">
-      <div class="panel-kicker">离线精练 · 79 道真题</div>
+      <div class="panel-kicker">79 道真题 · AI 可选</div>
       <h2 id="login-title">同学，如何称呼你？</h2>
-      <p class="panel-copy">填写姓名后开始研习。自评"还需巩固"的题会自动收进你的个人巩固包。</p>
+      <p class="panel-copy">填写昵称后开始研习。自评“还需巩固”的题会收进个人巩固包。</p>
       <form id="name-form" novalidate>
-        <label class="field-label" for="name-input">姓名</label>
-        <input class="name-input" id="name-input" name="name" type="text" maxlength="30" autocomplete="name" placeholder="例如：李明" value="${esc(data.name)}" aria-describedby="name-error">
+        <label class="field-label" for="name-input">称呼（可使用昵称）</label>
+        <input class="name-input" id="name-input" name="name" type="text" maxlength="30" autocomplete="nickname" placeholder="例如：小明" value="${esc(data.name)}" aria-describedby="name-error">
         <div class="field-error" id="name-error" role="alert"></div>
         <button class="primary-button full-width" type="submit">开始学习 <span aria-hidden="true">→</span></button>
       </form>
       <ul class="login-features">
         <li><span class="feature-number">一</span>79 道真题，覆盖 2016—2026 各卷</li>
         <li><span class="feature-number">二</span>参考译文配采分点与翻译方法</li>
-        <li><span class="feature-number">三</span>自评记录，弱项自动收入巩固包</li>
+        <li><span class="feature-number">三</span>可选 AI 批改与云端错题本</li>
       </ul>
-      <div class="offline-note">${iconOffline}<span>无需联网，无外部请求。姓名与记录仅存于当前浏览器，清除浏览器数据后无法恢复。</span></div>
+      <div class="offline-note">${iconOffline}<span>题库和本地自评无需联网；使用 AI 或云端错题本时会连接服务。请勿输入真实姓名或其他个人信息。</span></div>
     </section>
   </section>`);
   document.getElementById('name-input').focus();
@@ -356,19 +406,36 @@ function renderHome(){
     ${groupHtml}
   </section>`);
 }
+function aiResultHtml(q){
+  const saved=data.aiResults[q.id];
+  if(!saved)return '';
+  const result=saved.result;
+  const labels={correct:'译准',partial:'部分译出',missed:'遗漏或误译'};
+  const points=result.points.map(point=>`<div class="marker-item"><span class="point-status ${esc(point.status)}">${labels[point.status]||'点评'}</span><strong>${esc(point.name)}</strong><p>${esc(point.evidence)}</p><p>${esc(point.feedback)}</p></div>`).join('');
+  const errors=result.errors.length?result.errors.map(error=>`<div class="marker-item"><strong>${esc(error.category)}</strong>${esc(error.explanation)}</div>`).join(''):'<p>未发现明显错误，请继续对照采分点检查。</p>';
+  return `<section class="ai-result" aria-labelledby="ai-result-title">
+    <h2 id="ai-result-title" tabindex="-1">AI 批改结果</h2>
+    <div class="score-line"><span class="score-value">${result.score}</span><span>/ 10 分 · 建议得分</span></div>
+    <p class="ai-disclaimer">AI 评分仅供学习参考，不会覆盖你的自评统计。</p>
+    <section class="analysis-section"><h3>总体评价</h3><p>${esc(result.summary)}</p></section>
+    <section class="analysis-section"><h3>逐项采分点</h3><div class="marker-list">${points}</div></section>
+    <section class="analysis-section"><h3>错误原因</h3><div class="marker-list">${errors}</div></section>
+    <section class="analysis-section"><h3>修改建议</h3><ul>${result.suggestions.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></section>
+    <button class="secondary-button" type="button" data-action="add-wrong">加入云端错题本</button>
+  </section>`;
+}
 function answerHtml(q){
   const points=splitPoints(q.points).map(p=>`<div class="marker-item">${esc(p)}</div>`).join('');
   let assess='';
   if(marked===null){
-    assess=`<div class="quiz-actions"><span class="quiz-hint">对照之后，给自己一个评价</span><span style="display:flex;gap:10px"><button class="secondary-button" type="button" data-action="mark-wrong">还需巩固</button><button class="primary-button" type="button" data-action="mark-right">我译对了</button></span></div>`;
+    assess=`<div class="quiz-actions"><span class="quiz-hint">对照之后，给自己一个评价</span><span style="display:flex;gap:10px;flex-wrap:wrap"><button class="secondary-button" type="button" data-action="mark-wrong">还需巩固</button><button class="primary-button" type="button" data-action="mark-right">我译对了</button></span></div>`;
   }else{
     const ok=marked===true;
-    const idx=QUESTIONS.indexOf(q);
-    const next=QUESTIONS[idx+1];
+    const next=QUESTIONS[QUESTIONS.indexOf(q)+1];
     assess=`<div class="verdict ${ok?'':'wrong'}"><span class="verdict-mark" aria-hidden="true">${ok?'✓':'思'}</span><div><h2>${ok?'已记录：译对了':'已收入巩固包'}</h2><p>${ok?'继续保持，可以挑战下一题。':'稍后在巩固包里重新攻克它。'}</p></div></div>
     <div class="quiz-actions"><button class="secondary-button" type="button" data-action="home">返回题目列表</button>${next?`<button class="primary-button" type="button" data-action="open" data-id="${next.id}">下一题 →</button>`:''}</div>`;
   }
-  return `<div class="verdict"><span class="verdict-mark" aria-hidden="true">译</span><div><h2>参考译文</h2><p>对照采分点，检查你的翻译。</p></div></div>
+  return `${aiResultHtml(q)}<div class="verdict"><span class="verdict-mark" aria-hidden="true">译</span><div><h2>题库标准答案</h2><p>参考译文与采分点解析。</p></div></div>
     <div class="translation">${esc(q.translation)}</div>
     <section class="analysis-section"><h3>要点解析 · 采分点</h3><p class="analysis-intro">每个词落到实处的依据与推断方法。</p><div class="marker-list">${points}</div></section>
     <section class="analysis-section"><h3>翻译方法</h3><p class="analysis-intro">留、换、补、删、调、套、贯，看本题用了哪几招。</p><div class="marker-list"><div class="marker-item">${esc(q.methods)}</div></div></section>
@@ -377,40 +444,149 @@ function answerHtml(q){
 function renderQuiz(){
   const q=QUESTIONS.find(x=>x.id===currentId);if(!q){renderHome();return;}
   const idx=QUESTIONS.indexOf(q)+1;
+  const draft=drafts[q.id]||'';
   setView('quiz',`<section class="view">
     <button class="back-button" type="button" data-action="home"><span aria-hidden="true">←</span> 返回题目列表</button>
     <div class="quiz-meta"><span class="quiz-number">第 ${idx} 题 / 共 ${QUESTIONS.length} 题</span><span>${esc(q.group)} · ${esc(q.source)}</span></div>
     <h1 class="quiz-title">${esc(q.group)} ${esc(q.source)}</h1>
+    ${codeBannerHtml()}
     <div class="quiz-layout ${revealed?'graded':''}">
       <section class="paper-panel question-panel" aria-label="翻译原句">
-        <div class="instruction"><span>先自行翻译下面的<strong>原句</strong>，再对照参考译文</span><span class="selection-count">翻译题</span></div>
+        <div class="instruction"><span>先翻译下面的<strong>原句</strong>，再查看解析</span><span class="selection-count">翻译题</span></div>
         <div class="sentence" aria-label="文言原句">${esc(q.original)}</div>
-        <div class="quiz-actions"><span class="quiz-hint">${revealed?'译文已展开，请在右侧自评':'建议在纸上或心中完成翻译后再对照'}</span>${revealed?'':'<button class="primary-button" type="button" data-action="reveal">对照参考译文</button>'}</div>
+        <form id="grade-form" novalidate>
+          <label class="field-label" for="translation-input">我的译文</label>
+          <textarea class="translation-input" id="translation-input" name="translation" aria-describedby="translation-count ai-error" aria-invalid="${gradingError?'true':'false'}" ${grading?'disabled':''}>${esc(draft)}</textarea>
+          <div class="input-meta"><span id="translation-count">已输入 ${draft.length} / 2000 字符，至少 4 字符</span><span>10 分制建议评分</span></div>
+          <p class="privacy-note">译文会发送给 AI 服务用于本次批改，请不要输入个人信息。</p>
+          <div class="ai-error" id="ai-error" role="alert" ${gradingError?'':'hidden'}>${esc(gradingError)}</div>
+          <div class="ai-actions"><button class="primary-button" id="grade-button" type="submit" ${grading?'disabled':''}>${grading?'AI 正在批改…':gradingError?'重试 AI 批改':'AI 批改'}</button><button class="secondary-button" type="button" data-action="reveal">只看参考答案</button></div>
+          <div class="cloud-muted" role="status" aria-live="polite">${grading?'正在生成评分与逐项点评，请不要重复提交。':''}</div>
+        </form>
       </section>
-      ${revealed?`<aside class="result-panel" id="result-panel" aria-label="参考译文与解析">${answerHtml(q)}</aside>`:''}
+      ${revealed?`<aside class="result-panel" id="result-panel" aria-label="AI 批改与参考译文">${answerHtml(q)}</aside>`:''}
     </div>
   </section>`);
 }
 function openQuiz(id){
-  currentId=id;revealed=false;marked=null;renderQuiz();
+  currentId=id;revealed=!!data.aiResults[id];marked=null;gradingError='';renderQuiz();
+}
+function applyCloudBook(book){cloudItems=book.items;cloudVersion=book.version;data.cloudStatus='synced';saveData();}
+async function ensureLearningCode(){
+  if(data.learningCode)return data.learningCode;
+  if(learningCodePromise)return learningCodePromise;
+  learningCodePromise=(async()=>{
+    const {learningCode}=await createLearner();
+    data.learningCode=learningCode;newCode=true;data.cloudStatus='local';saveData();
+    try { await syncExistingWrongItems(); }
+    catch (_) { data.cloudStatus='local';saveData(); }
+    return learningCode;
+  })().finally(()=>{learningCodePromise=null;});
+  return learningCodePromise;
+}
+async function syncExistingWrongItems(){
+  if(data.cloudInitialSyncDone)return;
+  for(const q of QUESTIONS){
+    if(!recordFor(q.id).needsReview)continue;
+    const saved=data.aiResults[q.id];
+    const book=await putWrongItem(data.learningCode,q.id,{
+      latestTranslation:drafts[q.id]||saved?.translation||'',lastScore:saved?.result.score??null,
+      errorSummary:saved?.result.summary||'学生自评：还需巩固'
+    },cloudVersion);
+    applyCloudBook(book);
+  }
+  data.cloudInitialSyncDone=true;data.cloudStatus='synced';saveData();
+}
+async function gradeCurrent(){
+  if(grading)return;
+  const translation=(drafts[currentId]||'').trim();
+  if(translation.length<4||translation.length>2000){
+    gradingError=translation.length<4?'请至少输入 4 个字符的译文。':'译文不能超过 2000 个字符。';renderQuiz();
+    document.getElementById('translation-input').focus();return;
+  }
+  if(data.aiResults[currentId]&&!window.confirm('再次提交会产生一次新的 AI 模型调用，是否继续？'))return;
+  grading=true;gradingError='';renderQuiz();
+  try{
+    await ensureLearningCode();
+    const result=await gradeTranslation({questionId:currentId,translation});
+    data.aiResults[currentId]={translation,result};saveData();revealed=true;
+  }catch(error){gradingError=error.message||'AI 批改失败，请稍后手动重试。';}
+  grading=false;renderQuiz();
+  if(!gradingError)requestAnimationFrame(()=>document.getElementById('ai-result-title')?.focus());
+  else document.getElementById('translation-input')?.focus();
+}
+async function syncWrongItem(id){
+  const saved=data.aiResults[id];
+  data.cloudStatus='local';saveData();renderQuiz();
+  try{
+    await ensureLearningCode();
+    const book=await putWrongItem(data.learningCode,id,{
+      latestTranslation:drafts[id]||saved?.translation||'',lastScore:saved?.result.score??null,
+      errorSummary:saved?.result.summary||'学生自评：还需巩固'
+    },cloudVersion);
+    applyCloudBook(book);showToast('已同步到云端错题本');
+  }catch(error){data.cloudStatus='local';saveData();showToast(`已保存在本机，云端未同步：${error.message}`);}
+  if(view==='quiz')renderQuiz();
+}
+function addCurrentWrong(){
+  const r=recordFor(currentId);r.needsReview=true;r.mastered=false;data.questions[currentId]=r;saveData();
+  syncWrongItem(currentId);
+}
+function formatDate(value){const date=new Date(value);return Number.isNaN(date.getTime())?'时间未知':date.toLocaleString('zh-CN');}
+function cloudSettingsHtml(){
+  const code=data.learningCode?`<p>学习码：<code class="code-value" id="learning-code">${esc(data.learningCode)}</code></p><button class="secondary-button" type="button" data-action="copy-code">复制学习码</button><p class="cloud-muted">不要公开分享学习码。其他设备可在下方输入它找回同一错题本。</p>`:'<p>尚未创建学习码，当前错题仅保存在本机。</p><button class="secondary-button" type="button" data-action="retry-cloud">创建学习码并同步</button>';
+  return `<section class="paper-panel cloud-settings" aria-labelledby="cloud-settings-title"><h2 id="cloud-settings-title">云端错题本设置</h2>${code}<form id="recover-form"><label class="field-label" for="recover-code">找回其他设备的错题本</label><input class="name-input" id="recover-code" name="code" autocomplete="off" placeholder="输入学习码" required><button class="secondary-button" type="submit">找回错题本</button></form>${wrongbookError?`<div class="ai-error" role="alert">${esc(wrongbookError)} <button type="button" class="text-button" data-action="retry-cloud">重试</button></div>`:''}</section>`;
 }
 function renderWrongbook(){
   if(!data.name){renderWelcome();return;}
-  const s=stats();const wrong=QUESTIONS.filter(q=>recordFor(q.id).needsReview);
-  const list=wrong.map(q=>{const r=recordFor(q.id);return `<button class="review-item" type="button" data-action="open" data-id="${q.id}"><span><span class="review-item-source">${esc(q.group)} · ${esc(q.source)}</span><span class="review-item-text">${esc(q.original)}</span><span class="review-item-last">已自评 ${r.attempts} 次 · 点击重新作答</span></span><span class="review-redo">再练一次 →</span></button>`;}).join('');
+  const ids=new Set([...QUESTIONS.filter(q=>recordFor(q.id).needsReview).map(q=>q.id),...cloudItems.map(item=>item.questionId)]);
+  const list=[...ids].map(id=>{
+    const q=QUESTIONS.find(question=>question.id===id);if(!q)return '';
+    const cloud=cloudItems.find(item=>item.questionId===id);const saved=data.aiResults[id];
+    return `<article class="wrong-card"><div class="review-item-source">${esc(q.group)} · ${esc(q.source)}</div><h2>${esc(q.original)}</h2>
+      ${cloud?`<blockquote>${esc(cloud.latestTranslation||'（未保存译文）')}</blockquote><p>建议分：${cloud.lastScore===null?'未批改':`${cloud.lastScore} / 10`} · 加入时间：${esc(formatDate(cloud.addedAt))}</p><p>主要错误：${esc(cloud.errorSummary||'无')}</p><span class="sync-badge">已同步</span>`:`<p>${esc(saved?.result.summary||'本地待巩固题')}</p><span class="sync-badge">仅保存在本机／未同步</span>`}
+      <div class="wrong-actions"><button class="primary-button" type="button" data-action="open" data-id="${q.id}">重新作答</button><button class="secondary-button" type="button" data-action="master-wrong" data-id="${q.id}">标记已掌握</button><button class="text-button" type="button" data-action="delete-wrong" data-id="${q.id}">删除</button></div></article>`;
+  }).join('');
   setView('wrongbook',`<section class="view">
     <button class="back-button" type="button" data-action="home"><span aria-hidden="true">←</span> 返回题目列表</button>
-    <div class="page-heading"><div><h1>${esc(data.name)}的巩固包</h1><p>错题不是终点，重新译对一次，就是真正掌握。</p></div><span class="heading-note">温故而知新</span></div>
-    ${statHtml(s)}
-    ${wrong.length?`<div class="review-list">${list}</div>`:`<div class="empty-state"><span class="empty-seal" aria-hidden="true">通</span><h2>当前没有待巩固题</h2><p>做过的题都已掌握。回到题库，继续挑战新的文本吧。</p><button class="primary-button" type="button" data-action="home">返回题库</button></div>`}
+    <div class="page-heading"><div><h1>${esc(data.name)}的巩固包</h1><p>本地与云端错题集中复习，AI 分数不会替代你的自评。</p></div><span class="heading-note">温故而知新</span></div>
+    ${codeBannerHtml()}${cloudSettingsHtml()}
+    <div role="status" aria-live="polite" class="cloud-muted">${cloudLoading?'正在读取云端错题本…':''}</div>
+    ${ids.size?`<div class="review-list">${list}</div><div class="wrong-actions"><button class="text-button" type="button" data-action="clear-wrongbook">清空错题本</button></div>`:`<div class="empty-state"><span class="empty-seal" aria-hidden="true">通</span><h2>当前没有待巩固题</h2><p>做过的题都已掌握。回到题库，继续挑战新的文本吧。</p><button class="primary-button" type="button" data-action="home">返回题库</button></div>`}
   </section>`);
 }
+async function openWrongbook(){
+  renderWrongbook();cloudLoading=true;wrongbookError='';renderWrongbook();
+  try{
+    await ensureLearningCode();await syncExistingWrongItems();applyCloudBook(await getWrongbook(data.learningCode));
+  }catch(error){data.cloudStatus='local';wrongbookError=error.message||'云端暂时不可用，本地记录仍可使用。';saveData();}
+  cloudLoading=false;renderWrongbook();
+}
+async function removeWrongItem(id){
+  const r=recordFor(id);r.needsReview=false;r.mastered=true;data.questions[id]=r;saveData();
+  if(data.learningCode&&cloudItems.some(item=>item.questionId===id)){
+    try{applyCloudBook(await deleteWrongItem(data.learningCode,id,cloudVersion));}
+    catch(error){wrongbookError=`本地已更新，云端未同步：${error.message}`;}
+  }
+  renderWrongbook();
+}
+async function clearAllWrong(){
+  if(!window.confirm('确定清空本地和云端错题本吗？此操作需要重新添加错题。'))return;
+  for(const q of QUESTIONS){if(data.questions[q.id])data.questions[q.id].needsReview=false;}
+  saveData();
+  if(data.learningCode){try{applyCloudBook(await clearWrongbook(data.learningCode,cloudVersion));}catch(error){wrongbookError=`本地已清空，云端未同步：${error.message}`;}}
+  renderWrongbook();
+}
+async function recoverWrongbook(code){
+  const book=await getWrongbook(code);
+  data.learningCode=code;data.cloudInitialSyncDone=true;newCode=false;applyCloudBook(book);wrongbookError='';renderWrongbook();
+}
 
-document.addEventListener('click',event=>{
+document.addEventListener('click',async event=>{
   const button=event.target.closest('[data-action]');if(!button)return;
   const action=button.dataset.action;
   if(action==='home')renderHome();
-  else if(action==='wrongbook')renderWrongbook();
+  else if(action==='wrongbook')await openWrongbook();
   else if(action==='open')openQuiz(button.dataset.id);
   else if(action==='reveal'){
     revealed=true;renderQuiz();
@@ -418,23 +594,40 @@ document.addEventListener('click',event=>{
   }
   else if(action==='mark-right'||action==='mark-wrong'){
     const q=QUESTIONS.find(x=>x.id===currentId);if(!q||!revealed||marked!==null)return;
-    const ok=action==='mark-right';marked=ok;
-    const r=recordFor(q.id);
-    r.attempts+=1;if(ok)r.correctAttempts+=1;
-    r.needsReview=!ok;r.mastered=ok;
+    const ok=action==='mark-right';marked=ok;const r=recordFor(q.id);
+    r.attempts+=1;if(ok)r.correctAttempts+=1;r.needsReview=!ok;r.mastered=ok;
     data.questions[q.id]=r;saveData();renderQuiz();
-    showToast(ok?'已记录：译对了':'已收入巩固包，稍后重练');
+    if(ok)showToast('已记录：译对了');else{showToast('已收入本机巩固包，正在尝试云端同步');await syncWrongItem(q.id);}
   }
+  else if(action==='add-wrong')addCurrentWrong();
+  else if(action==='copy-code'){
+    try{await navigator.clipboard.writeText(data.learningCode);showToast('学习码已复制，请妥善保存');}
+    catch(_){showToast('请选中学习码并手动复制');}
+  }
+  else if(action==='retry-cloud')await openWrongbook();
+  else if(action==='delete-wrong'||action==='master-wrong')await removeWrongItem(button.dataset.id);
+  else if(action==='clear-wrongbook')await clearAllWrong();
   else if(action==='change-name')renderWelcome();
 });
-document.addEventListener('submit',event=>{
-  if(event.target.id!=='name-form')return;event.preventDefault();
-  const input=document.getElementById('name-input'),name=input.value.trim();
-  if(!name){input.setAttribute('aria-invalid','true');document.getElementById('name-error').textContent='请先填写姓名';input.focus();return;}
-  data.name=name;saveData();renderHome();
+document.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(event.target.id==='name-form'){
+    const input=document.getElementById('name-input'),name=input.value.trim();
+    if(!name){input.setAttribute('aria-invalid','true');document.getElementById('name-error').textContent='请先填写称呼';input.focus();return;}
+    data.name=name;saveData();renderHome();
+  }else if(event.target.id==='grade-form')await gradeCurrent();
+  else if(event.target.id==='recover-form'){
+    const input=document.getElementById('recover-code');
+    try{await recoverWrongbook(input.value.trim());showToast('已找回云端错题本');}
+    catch(error){wrongbookError=error.message||'找回失败，请检查学习码';renderWrongbook();input.focus();}
+  }
 });
 document.addEventListener('input',event=>{
   if(event.target.id==='name-input'){event.target.removeAttribute('aria-invalid');document.getElementById('name-error').textContent='';}
+  if(event.target.id==='translation-input'){
+    drafts[currentId]=event.target.value;event.target.removeAttribute('aria-invalid');
+    document.getElementById('translation-count').textContent=`已输入 ${event.target.value.length} / 2000 字符，至少 4 字符`;
+  }
 });
 
 window.WenyanApp={getQuestions:()=>QUESTIONS,getState:()=>JSON.parse(JSON.stringify(data))};
