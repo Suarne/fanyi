@@ -190,7 +190,7 @@ tr:last-child td{border-bottom:0}
 .review-item-last{font-size:12px;color:var(--muted)}
 .review-redo{font-weight:700;color:var(--cinnabar);white-space:nowrap}
 .site-footer{border-top:1px solid var(--line);color:var(--muted);font-size:12px}
-.footer-inner{min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.footer-inner{min-height:64px;display:flex;align-items:center;justify-content:center;gap:20px;text-align:center}
 .toast{position:fixed;left:50%;bottom:24px;z-index:40;transform:translateX(-50%);max-width:min(520px,calc(100% - 32px));padding:12px 18px;background:var(--ink);color:var(--paper);border-radius:6px;box-shadow:var(--shadow);font-size:14px}
 .storage-notice{margin-bottom:20px;padding:12px 16px;background:var(--cinnabar-soft);color:var(--cinnabar-dark);border:1px solid var(--cinnabar);border-radius:6px;font-size:13px}
 textarea{font:inherit}
@@ -220,7 +220,7 @@ textarea{font:inherit}
   .view{padding-block:30px 44px}.welcome-grid{grid-template-columns:1fr;gap:32px;min-height:0}.hero-title{font-size:40px;max-width:none}.hero-copy{font-size:16px;margin-bottom:20px}.classic-quote{font-size:16px}.login-panel{padding:24px}.login-panel:after{right:18px;top:18px}
   .page-heading{align-items:flex-start;margin-bottom:24px}.page-heading h1{font-size:28px}.heading-note{display:none}.stats-grid{grid-template-columns:repeat(2,1fr)}.stat{padding:16px}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}.stat-value{font-size:28px}
   .review-entry{padding:16px}.review-count{font-size:20px}.question-row{grid-template-columns:32px minmax(0,1fr) 18px;gap:10px;padding:12px 4px;min-height:88px}.question-row .status-badge{grid-column:2;justify-self:start;margin-top:-4px}.question-row .row-arrow{grid-column:3;grid-row:1/3}.question-main small{max-width:100%}.question-number{font-size:18px}
-  .quiz-title{font-size:25px}.question-panel,.result-panel{padding:20px 16px}.sentence{font-size:20px;line-height:2.2}.slot{width:44px;height:44px;margin-inline:1px}.quiz-actions{align-items:stretch;flex-direction:column}.quiz-actions .primary-button{width:100%}.quiz-hint{text-align:center}.fold-subtitle{display:none}.fold-title{flex:1}.fold summary{gap:9px}.verdict h2{font-size:21px}.review-item{grid-template-columns:1fr;gap:10px}.review-redo{font-size:14px}.footer-inner{align-items:flex-start;flex-direction:column;justify-content:center;gap:2px;padding-block:14px}
+  .quiz-title{font-size:25px}.question-panel,.result-panel{padding:20px 16px}.sentence{font-size:20px;line-height:2.2}.slot{width:44px;height:44px;margin-inline:1px}.quiz-actions{align-items:stretch;flex-direction:column}.quiz-actions .primary-button{width:100%}.quiz-hint{text-align:center}.fold-subtitle{display:none}.fold-title{flex:1}.fold summary{gap:9px}.verdict h2{font-size:21px}.review-item{grid-template-columns:1fr;gap:10px}.review-redo{font-size:14px}.footer-inner{align-items:center;flex-direction:column;justify-content:center;gap:2px;padding-block:14px}
 }
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
 </style>
@@ -241,7 +241,7 @@ textarea{font:inherit}
 </header>
 <main id="app" class="shell"></main>
 <footer class="site-footer">
-  <div class="shell footer-inner"><span>文言翻译研习 · 配套学习资源</span><span>本地自评 · 可选 AI 批改与云端错题本</span></div>
+  <div class="shell footer-inner"><span>文言翻译研习 · 配套学习资源</span></div>
 </footer>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <script type="module">
@@ -350,12 +350,11 @@ function renderWelcome(){
   setView('welcome',`<section class="view welcome-grid">
     <div>
       <div class="eyebrow">文言文翻译训练</div>
-      <h1 class="hero-title">落实每个<br><em>采分点</em>，译准每句话</h1>
-      <p class="hero-copy">收录 2016—2026 年高考文言文翻译真题 79 道。先自行翻译原句，再对照参考译文、采分点解析与翻译方法——不仅知道怎么译，更知道为什么这样译。</p>
+      <h1 class="hero-title">落实每个<em>采分点</em>，<br>译准每句话</h1>
+      <p class="hero-copy">收录 2016—2026 年高考文言文翻译真题 79 道。<br>先自行翻译原句，再对照参考译文、采分点解析与翻译方法</p>
       <blockquote class="classic-quote">译事三难：信、达、雅。<small>—— 严复《天演论·译例言》</small></blockquote>
     </div>
     <section class="paper-panel login-panel" aria-labelledby="login-title">
-      <div class="panel-kicker">79 道真题 · AI 可选</div>
       <h2 id="login-title">同学，如何称呼你？</h2>
       <p class="panel-copy">填写昵称后开始研习。自评“还需巩固”的题会收进个人巩固包。</p>
       <form id="name-form" novalidate>
@@ -369,7 +368,7 @@ function renderWelcome(){
         <li><span class="feature-number">二</span>参考译文配采分点与翻译方法</li>
         <li><span class="feature-number">三</span>可选 AI 批改与云端错题本</li>
       </ul>
-      <div class="offline-note">${iconOffline}<span>题库和本地自评无需联网；使用 AI 或云端错题本时会连接服务。请勿输入真实姓名或其他个人信息。</span></div>
+      <div class="offline-note">${iconOffline}<span>使用云端错题本时会连接 AI 服务，请勿输入真实姓名或其他个人信息。</span></div>
     </section>
   </section>`);
   document.getElementById('name-input').focus();
@@ -457,7 +456,7 @@ function renderQuiz(){
         <form id="grade-form" novalidate>
           <label class="field-label" for="translation-input">我的译文</label>
           <textarea class="translation-input" id="translation-input" name="translation" aria-describedby="translation-count ai-error" aria-invalid="${gradingError?'true':'false'}" ${grading?'disabled':''}>${esc(draft)}</textarea>
-          <div class="input-meta"><span id="translation-count">已输入 ${draft.length} / 2000 字符，至少 4 字符</span><span>10 分制建议评分</span></div>
+          <div class="input-meta"><span id="translation-count">已输入 ${draft.length} / 2000 字符，至少 4 字符</span><span>（10分制）</span></div>
           <p class="privacy-note">译文会发送给 AI 服务用于本次批改，请不要输入个人信息。</p>
           <div class="ai-error" id="ai-error" role="alert" ${gradingError?'':'hidden'}>${esc(gradingError)}</div>
           <div class="ai-actions"><button class="primary-button" id="grade-button" type="submit" ${grading?'disabled':''}>${grading?'AI 正在批改…':gradingError?'重试 AI 批改':'AI 批改'}</button><button class="secondary-button" type="button" data-action="reveal">只看参考答案</button></div>
@@ -469,6 +468,7 @@ function renderQuiz(){
   </section>`);
 }
 function openQuiz(id){
+  newCode=false;
   currentId=id;revealed=!!data.aiResults[id];marked=null;gradingError='';renderQuiz();
 }
 function applyCloudBook(book){cloudItems=book.items;cloudVersion=book.version;data.cloudStatus='synced';saveData();}
