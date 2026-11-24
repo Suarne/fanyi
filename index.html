@@ -206,6 +206,7 @@ textarea{font:inherit}
 .ai-disclaimer,.cloud-muted{font-size:12px;color:var(--muted)}
 .point-status{display:inline-block;border-radius:12px;padding:1px 8px;font-size:12px;margin-right:8px;background:var(--paper-deep)}
 .point-status.correct{color:var(--pine);background:var(--pine-soft)}.point-status.partial{color:var(--gold)}.point-status.missed{color:var(--cinnabar);background:var(--cinnabar-soft)}
+.point-score{display:inline-block;color:var(--muted);font-size:12px;white-space:nowrap}
 .cloud-banner{padding:16px 18px;margin-bottom:20px;border:1px solid var(--cinnabar);background:var(--cinnabar-soft);border-radius:8px}
 .code-value{display:inline-block;max-width:100%;overflow-wrap:anywhere;font:700 16px/1.6 monospace;color:var(--cinnabar-dark);user-select:all}
 .cloud-settings{padding:18px;margin-bottom:24px}.cloud-settings h2{font-size:19px;margin-bottom:8px}.cloud-settings form{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.cloud-settings input{flex:1;min-width:180px}
@@ -259,9 +260,26 @@ const defaultData = () => ({
 });
 const validLearningCode = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,64}$/.test(value);
 function validAiResult(result){
-  return result && typeof result.score === 'number' && result.score >= 0 && result.score <= 10 &&
-    typeof result.summary === 'string' && Array.isArray(result.points) && Array.isArray(result.errors) &&
-    Array.isArray(result.suggestions) && typeof result.standardAnswer === 'string';
+  if(!result||!Number.isInteger(result.score)||result.score<0||result.score>4||
+    typeof result.summary!=='string'||!Array.isArray(result.points)||
+    !Array.isArray(result.errors)||!Array.isArray(result.suggestions)||
+    typeof result.standardAnswer!=='string')return false;
+  const general=result.points.filter(point=>point?.name==='句子大意');
+  const keys=result.points.filter(point=>point?.name!=='句子大意');
+  if(keys.length<1||keys.length>4||general.length>1||
+    (keys.length===4)!==(general.length===0))return false;
+  if(general.length&&result.points.at(-1)?.name!=='句子大意')return false;
+  for(const point of result.points){
+    if(!point||typeof point.name!=='string'||typeof point.evidence!=='string'||
+      typeof point.feedback!=='string'||!Number.isInteger(point.score))return false;
+    const isGeneral=point.name==='句子大意';
+    const max=isGeneral?4-keys.length:1;
+    if(point.maxScore!==max||point.score<0||point.score>max||
+      (!isGeneral&&!point.name.startsWith('关键采分点')))return false;
+    const status=point.score===max?'correct':point.score===0?'missed':'partial';
+    if(point.status!==status)return false;
+  }
+  return result.points.reduce((sum,point)=>sum+point.score,0)===result.score;
 }
 let storageWarning = '';
 let data = defaultData();
@@ -410,16 +428,18 @@ function aiResultHtml(q){
   if(!saved)return '';
   const result=saved.result;
   const labels={correct:'译准',partial:'部分译出',missed:'遗漏或误译'};
-  const points=result.points.map(point=>`<div class="marker-item"><span class="point-status ${esc(point.status)}">${labels[point.status]||'点评'}</span><strong>${esc(point.name)}</strong><p>${esc(point.evidence)}</p><p>${esc(point.feedback)}</p></div>`).join('');
+  const points=result.points.map(point=>`<div class="marker-item"><span class="point-status ${esc(point.status)}">${labels[point.status]||'点评'}</span><strong>${esc(point.name)}</strong><span class="point-score">${point.score} / ${point.maxScore} 分</span><p>${esc(point.evidence)}</p><p>${esc(point.feedback)}</p></div>`).join('');
   const errors=result.errors.length?result.errors.map(error=>`<div class="marker-item"><strong>${esc(error.category)}</strong>${esc(error.explanation)}</div>`).join(''):'<p>未发现明显错误，请继续对照采分点检查。</p>';
   return `<section class="ai-result" aria-labelledby="ai-result-title">
     <h2 id="ai-result-title" tabindex="-1">AI 批改结果</h2>
-    <div class="score-line"><span class="score-value">${result.score}</span><span>/ 10 分 · 建议得分</span></div>
+    <div class="score-line"><span class="score-value">${result.score}</span><span>/ 4 分 · 建议得分</span></div>
     <p class="ai-disclaimer">AI 评分仅供学习参考，不会覆盖你的自评统计。</p>
-    <section class="analysis-section"><h3>总体评价</h3><p>${esc(result.summary)}</p></section>
-    <section class="analysis-section"><h3>逐项采分点</h3><div class="marker-list">${points}</div></section>
-    <section class="analysis-section"><h3>错误原因</h3><div class="marker-list">${errors}</div></section>
-    <section class="analysis-section"><h3>修改建议</h3><ul>${result.suggestions.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></section>
+    <section class="analysis-section" id="grading-breakdown"><h3>评分明细</h3><div class="marker-list">${points}</div></section>
+    <div id="translation-analysis">
+      <section class="analysis-section"><h3>总体评价</h3><p>${esc(result.summary)}</p></section>
+      <section class="analysis-section"><h3>错误原因</h3><div class="marker-list">${errors}</div></section>
+      <section class="analysis-section"><h3>修改建议</h3><ul>${result.suggestions.map(s=>`<li>${esc(s)}</li>`).join('')}</ul></section>
+    </div>
     <button class="secondary-button" type="button" data-action="add-wrong">加入云端错题本</button>
   </section>`;
 }
@@ -456,7 +476,7 @@ function renderQuiz(){
         <form id="grade-form" novalidate>
           <label class="field-label" for="translation-input">我的译文</label>
           <textarea class="translation-input" id="translation-input" name="translation" aria-describedby="translation-count ai-error" aria-invalid="${gradingError?'true':'false'}" ${grading?'disabled':''}>${esc(draft)}</textarea>
-          <div class="input-meta"><span id="translation-count">已输入 ${draft.length} / 2000 字符，至少 4 字符</span><span>（10分制）</span></div>
+          <div class="input-meta"><span id="translation-count">已输入 ${draft.length} / 2000 字符，至少 4 字符</span><span>（4分制）</span></div>
           <p class="privacy-note">译文会发送给 AI 服务用于本次批改，请不要输入个人信息。</p>
           <div class="ai-error" id="ai-error" role="alert" ${gradingError?'':'hidden'}>${esc(gradingError)}</div>
           <div class="ai-actions"><button class="primary-button" id="grade-button" type="submit" ${grading?'disabled':''}>${grading?'AI 正在批改…':gradingError?'重试 AI 批改':'AI 批改'}</button><button class="secondary-button" type="button" data-action="reveal">只看参考答案</button></div>
@@ -544,7 +564,7 @@ function renderWrongbook(){
     const q=QUESTIONS.find(question=>question.id===id);if(!q)return '';
     const cloud=cloudItems.find(item=>item.questionId===id);const saved=data.aiResults[id];
     return `<article class="wrong-card"><div class="review-item-source">${esc(q.group)} · ${esc(q.source)}</div><h2>${esc(q.original)}</h2>
-      ${cloud?`<blockquote>${esc(cloud.latestTranslation||'（未保存译文）')}</blockquote><p>建议分：${cloud.lastScore===null?'未批改':`${cloud.lastScore} / 10`} · 加入时间：${esc(formatDate(cloud.addedAt))}</p><p>主要错误：${esc(cloud.errorSummary||'无')}</p><span class="sync-badge">已同步</span>`:`<p>${esc(saved?.result.summary||'本地待巩固题')}</p><span class="sync-badge">仅保存在本机／未同步</span>`}
+      ${cloud?`<blockquote>${esc(cloud.latestTranslation||'（未保存译文）')}</blockquote><p>建议分：${cloud.lastScore===null?'未批改':cloud.lastScore>=0&&cloud.lastScore<=4?`${cloud.lastScore} / 4`:`旧版 ${cloud.lastScore} / 10`} · 加入时间：${esc(formatDate(cloud.addedAt))}</p><p>主要错误：${esc(cloud.errorSummary||'无')}</p><span class="sync-badge">已同步</span>`:`<p>${esc(saved?.result.summary||'本地待巩固题')}</p><span class="sync-badge">仅保存在本机／未同步</span>`}
       <div class="wrong-actions"><button class="primary-button" type="button" data-action="open" data-id="${q.id}">重新作答</button><button class="secondary-button" type="button" data-action="master-wrong" data-id="${q.id}">标记已掌握</button><button class="text-button" type="button" data-action="delete-wrong" data-id="${q.id}">删除</button></div></article>`;
   }).join('');
   setView('wrongbook',`<section class="view">
